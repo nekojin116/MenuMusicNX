@@ -53,6 +53,8 @@ Config is stored at `sdmc:/config/sys-tune/config.ini` (path kept for compatibil
 | HOME pressed over a game | Music resumes (same position) |
 | Return to game | Music pauses |
 | Close game on HOME | Music continues |
+| Console power on | Music fades in (~1 s) |
+| Console power off | Stops immediately (no fade out) |
 
 Open the overlay with **L + D-Pad Down + Right Stick click** (default Tesla binding), then select **MenuMusicNX**.
 

@@ -244,8 +244,10 @@ namespace tune::impl {
         bool g_should_pause      = false;
         bool g_should_run        = true;
         float g_fade_gain        = 0.f;
+        bool g_boot_fade_pending = true;
 
-        constexpr float FADE_STEP = 0.06f; // ~500 ms at ~42 ms/buffer
+        constexpr float FADE_STEP      = 0.06f; // ~500 ms at ~42 ms/buffer (HOME transitions)
+        constexpr float BOOT_FADE_STEP = 0.025f; // ~1.2 s at ~42 ms/buffer (power-on)
 
         auto ApplyFadeGain(s16 *data, size_t byte_size, float gain) -> void {
             if (gain >= 0.999f) {
@@ -265,11 +267,16 @@ namespace tune::impl {
 
         auto UpdateFadeGain() -> void {
             const float target = g_should_pause ? 0.f : 1.f;
+            const float step = g_boot_fade_pending ? BOOT_FADE_STEP : FADE_STEP;
 
             if (g_fade_gain < target) {
-                g_fade_gain = std::min(target, g_fade_gain + FADE_STEP);
+                g_fade_gain = std::min(target, g_fade_gain + step);
             } else if (g_fade_gain > target) {
-                g_fade_gain = std::max(target, g_fade_gain - FADE_STEP);
+                g_fade_gain = std::max(target, g_fade_gain - step);
+            }
+
+            if (g_boot_fade_pending && !g_should_pause && g_fade_gain >= 1.f) {
+                g_boot_fade_pending = false;
             }
         }
 
@@ -356,6 +363,9 @@ namespace tune::impl {
 
         R_TRY(audoutInitialize());
         SetVolume(config::get_volume());
+
+        g_fade_gain = 0.f;
+        g_boot_fade_pending = true;
 
         /* Fetch values from config, sanitize the return value */
         if (auto c = config::get_repeat(); c <= 2 && c >= 0) {

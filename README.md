@@ -1,7 +1,5 @@
 # MenuMusicNX
 
-![MenuMusicNX logo](assets/MenuMusicNX%20Logo.png)
-
 HOME Menu background music for the Nintendo Switch.
 
 <p align="center">

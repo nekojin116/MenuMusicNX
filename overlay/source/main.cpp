@@ -3,7 +3,6 @@
 #include "gui_error.hpp"
 #include "gui_main.hpp"
 #include "sdmc/sdmc.hpp"
-#include "pm/pm.hpp"
 #include "config/config.hpp"
 
 #include <tesla.hpp>
@@ -12,13 +11,11 @@ class SysTuneOverlay final : public tsl::Overlay {
   private:
     const char *msg = nullptr;
     Result fail     = 0;
+    bool tune_ready = false;
+    bool sdmc_ready = false;
 
   public:
     void initServices() override {
-        if (R_FAILED(pm::Initialize())) {
-            this->msg  = "Failed pm::Initialize()";
-            return;
-        }
         Result rc = tuneInitialize();
 
         // not found can happen if the service isn't started
@@ -49,11 +46,13 @@ class SysTuneOverlay final : public tsl::Overlay {
             this->fail = rc;
             return;
         }
+        this->tune_ready = true;
 
         if (R_FAILED(sdmc::Open())) {
             this->msg  = "Failed sdmc::Open()";
             return;
         }
+        this->sdmc_ready = true;
 
         u32 api;
         if (R_FAILED(tuneGetApiVersion(&api)) || api != TUNE_API_VERSION) {
@@ -63,9 +62,10 @@ class SysTuneOverlay final : public tsl::Overlay {
     }
 
     void exitServices() override {
-        sdmc::Close();
-        pm::Exit();
-        tuneExit();
+        if (this->sdmc_ready)
+            sdmc::Close();
+        if (this->tune_ready)
+            tuneExit();
     }
 
     std::unique_ptr<tsl::Gui> loadInitialGui() override {

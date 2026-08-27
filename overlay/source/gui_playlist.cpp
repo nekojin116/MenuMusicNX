@@ -7,13 +7,13 @@
 namespace {
 
     void NullLastDot(char *str) {
-        char *end = str + strlen(str) - 1;
-        while (str != end) {
-            if (*end == '.') {
-                *end = '\0';
-                return;
-            }
-            end--;
+        if (str == nullptr || *str == '\0') {
+            return;
+        }
+        char *dot = std::strrchr(str, '.');
+        char *separator = std::strrchr(str, '/');
+        if (dot != nullptr && (separator == nullptr || dot > separator)) {
+            *dot = '\0';
         }
     }
 
@@ -94,14 +94,9 @@ PlaylistGui::PlaylistGui() {
         }
 
         char *str = path;
-        size_t length   = std::strlen(str);
         NullLastDot(str);
-        for (size_t i = length; i >= 0; i--) {
-            if (str[i] == '/') {
-                str = str + i + 1;
-                break;
-            }
-        }
+        if (char *separator = std::strrchr(str, '/'))
+            str = separator + 1;
         auto item = new ButtonListItem(str, "\uE098");
         item->setClickListener([this, item](u64 keys) -> bool {
             // adjust index for above CategoryHeader.

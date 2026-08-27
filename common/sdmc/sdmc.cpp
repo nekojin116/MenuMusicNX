@@ -1,14 +1,10 @@
 #include "sdmc.hpp"
 
-#include <cstring>
-
 namespace sdmc {
 
     namespace {
 
         FsFileSystem sdmc;
-        char path_buffer[FS_MAX_PATH];
-
     }
 
     Result Open() {
@@ -20,18 +16,21 @@ namespace sdmc {
     }
 
     Result OpenFile(FsFile *file, const char *path, int open_mode) {
-        std::strcpy(path_buffer, path);
-        return fsFsOpenFile(&sdmc, path_buffer, open_mode, file);
+        if (file == nullptr || path == nullptr)
+            return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+        return fsFsOpenFile(&sdmc, path, open_mode, file);
     }
 
     Result OpenDir(FsDir *dir, const char *path, int open_mode) {
-        std::strcpy(path_buffer, path);
-        return fsFsOpenDirectory(&sdmc, path_buffer, open_mode, dir);
+        if (dir == nullptr || path == nullptr)
+            return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+        return fsFsOpenDirectory(&sdmc, path, open_mode, dir);
     }
 
     Result GetType(const char* path, FsDirEntryType* type) {
-        std::strcpy(path_buffer, path);
-        return fsFsGetEntryType(&sdmc, path_buffer, type);;
+        if (path == nullptr || type == nullptr)
+            return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+        return fsFsGetEntryType(&sdmc, path, type);
     }
 
     bool FileExists(const char* path) {
@@ -40,8 +39,9 @@ namespace sdmc {
     }
 
     Result CreateFolder(const char* path) {
-        std::strcpy(path_buffer, path);
-        return fsFsCreateDirectory(&sdmc, path_buffer);
+        if (path == nullptr)
+            return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+        return fsFsCreateDirectory(&sdmc, path);
     }
 
 }

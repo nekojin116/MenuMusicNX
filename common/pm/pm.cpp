@@ -3,8 +3,6 @@
 namespace {
 
 constexpr u64 QLAUNCH_TITLE_ID{pm::QlaunchTitleId};
-u64 CURRENT_TITLE_ID{};
-
 constexpr s32 EVENT_COUNT = 32;
 
 alignas(0x10) PdmAppletEvent g_applet_events[EVENT_COUNT]{};
@@ -12,6 +10,10 @@ alignas(0x10) PdmPlayEvent g_play_events[EVENT_COUNT]{};
 s32 g_last_play_event_total{-1};
 bool g_cached_home_foreground{};
 bool g_cached_home_valid{};
+bool g_pdmqry_initialized{};
+bool g_pmdmnt_initialized{};
+bool g_pminfo_initialized{};
+u64 g_cached_app_tid{};
 
 auto IsFocusEvent(u8 event_type) -> bool {
     return event_type == PdmAppletEventType_InFocus ||
@@ -65,7 +67,7 @@ auto ResolveHomeFromFocusEvent(u64 program_id, u8 event_type, u64 app_tid, bool*
     return false;
 }
 
-auto QueryHomeFromAppletEvents(u64 app_tid, s32 start_entry, s32 out, bool* home_foreground) -> bool {
+auto QueryHomeFromAppletEvents(u64 app_tid, s32 out, bool* home_foreground) -> bool {
     for (s32 i = out - 1; i >= 0; --i) {
         const PdmAppletEvent* event = &g_applet_events[i];
         if (!IsFocusEvent(event->event_type)) {
@@ -113,6 +115,10 @@ auto QueryHomeFromPlayEvents(u64 app_tid, s32 out, bool* home_foreground) -> boo
 }
 
 auto QueryHomeForegroundFromPdm(u64 app_tid, bool* home_foreground) -> Result {
+    if (!g_pdmqry_initialized) {
+        return MAKERESULT(Module_Libnx, LibnxError_NotFound);
+    }
+
     s32 total_entries{};
     s32 start_entry_index{};
     s32 end_entry_index{};
@@ -121,7 +127,7 @@ auto QueryHomeForegroundFromPdm(u64 app_tid, bool* home_foreground) -> Result {
         return rc;
     }
 
-    if (total_entries == g_last_play_event_total && g_cached_home_valid) {
+    if (total_entries == g_last_play_event_total && g_cached_home_valid && app_tid == g_cached_app_tid) {
         *home_foreground = g_cached_home_foreground;
         return 0;
     }
@@ -137,9 +143,10 @@ auto QueryHomeForegroundFromPdm(u64 app_tid, bool* home_foreground) -> Result {
     const bool allow_unknown_policy = hosversionAtLeast(10, 0, 0);
     rc = pdmqryQueryAppletEvent(start_entry, allow_unknown_policy, g_applet_events, EVENT_COUNT, &out);
     if (R_SUCCEEDED(rc) && out > 0) {
-        if (QueryHomeFromAppletEvents(app_tid, start_entry, out, home_foreground)) {
+        if (QueryHomeFromAppletEvents(app_tid, out, home_foreground)) {
             g_cached_home_foreground = *home_foreground;
             g_cached_home_valid = true;
+            g_cached_app_tid = app_tid;
             return 0;
         }
     }
@@ -163,6 +170,7 @@ auto QueryHomeForegroundFromPdm(u64 app_tid, bool* home_foreground) -> Result {
 
     g_cached_home_foreground = *home_foreground;
     g_cached_home_valid = true;
+    g_cached_app_tid = app_tid;
     return 0;
 }
 
@@ -171,47 +179,51 @@ auto QueryHomeForegroundFromPdm(u64 app_tid, bool* home_foreground) -> Result {
 namespace pm {
 
 auto Initialize() -> Result {
-    Result rc = pmdmntInitialize();
-    if (R_FAILED(rc)) {
-        return rc;
-    }
-
-    rc = pminfoInitialize();
-    if (R_FAILED(rc)) {
-        pmdmntExit();
-        return rc;
-    }
-
-    rc = pdmqryInitialize();
-    if (R_FAILED(rc)) {
-        pminfoExit();
-        pmdmntExit();
-        return rc;
-    }
+    g_pmdmnt_initialized = R_SUCCEEDED(pmdmntInitialize());
+    g_pminfo_initialized = R_SUCCEEDED(pminfoInitialize());
+    g_pdmqry_initialized = R_SUCCEEDED(pdmqryInitialize());
 
     g_last_play_event_total = -1;
     g_cached_home_valid = false;
+    g_cached_app_tid = 0;
 
     return 0;
 }
 
 void Exit() {
-    pdmqryExit();
-    pminfoExit();
-    pmdmntExit();
+    if (g_pdmqry_initialized) {
+        pdmqryExit();
+        g_pdmqry_initialized = false;
+    }
+    if (g_pminfo_initialized) {
+        pminfoExit();
+        g_pminfo_initialized = false;
+    }
+    if (g_pmdmnt_initialized) {
+        pmdmntExit();
+        g_pmdmnt_initialized = false;
+    }
 }
 
 void getCurrentPidTid(u64* pid_out, u64* tid_out) {
+    if (pid_out == nullptr || tid_out == nullptr) {
+        return;
+    }
+
+    *pid_out = UINT64_MAX;
+    *tid_out = 0;
+    if (!g_pmdmnt_initialized) {
+        return;
+    }
+
     Result rc{};
     if (R_SUCCEEDED(rc = pmdmntGetApplicationProcessId(pid_out))) {
-        if (0x20f == pminfoGetProgramId(tid_out, *pid_out)) {
+        if (g_pminfo_initialized && 0x20f == pminfoGetProgramId(tid_out, *pid_out)) {
             *tid_out = QLAUNCH_TITLE_ID;
         }
     } else if (rc == 0x20f) {
         *pid_out = 0;
         *tid_out = QLAUNCH_TITLE_ID;
-    } else {
-        *tid_out = CURRENT_TITLE_ID;
     }
 }
 

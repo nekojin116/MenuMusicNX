@@ -14,6 +14,7 @@ namespace tune {
     constexpr const Result OutOfRange       = MAKERESULT(Module, 12);
     constexpr const Result FileOpenFailure  = MAKERESULT(Module, 20);
     constexpr const Result VoiceInitFailure = MAKERESULT(Module, 21);
+    constexpr const Result DecodeFailure    = MAKERESULT(Module, 22);
     constexpr const Result OutOfMemory      = MAKERESULT(Module, 30);
     constexpr const Result Generic          = MAKERESULT(Module, 40);
 

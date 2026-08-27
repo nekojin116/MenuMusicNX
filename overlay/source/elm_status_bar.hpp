@@ -7,19 +7,19 @@
 
 class StatusBar final : public tsl::elm::Element {
   private:
-    bool m_playing;
-    TuneRepeatMode m_repeat;
-    TuneShuffleMode m_shuffle;
-    TuneCurrentStats m_stats;
+    bool m_playing{false};
+    TuneRepeatMode m_repeat{TuneRepeatMode_Off};
+    TuneShuffleMode m_shuffle{TuneShuffleMode_Off};
+    TuneCurrentStats m_stats{};
 
-    float m_percentage;
+    float m_percentage{0.f};
 
-    std::string_view m_current_track;
+    std::string_view m_current_track{"Waiting for music..."};
     std::string m_scroll_text;
-    u32 m_text_width;
-    u32 m_scroll_offset;
-    bool m_truncated;
-    u8 m_counter;
+    u32 m_text_width{0};
+    u32 m_scroll_offset{0};
+    bool m_truncated{false};
+    u8 m_counter{0};
 
     bool m_touched = false;
 

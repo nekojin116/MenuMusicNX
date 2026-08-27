@@ -19,6 +19,7 @@ void tuneExit() {
 }
 
 Result tuneGetStatus(bool *status) {
+    if (!status) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     u8 tmp=0;
     Result rc = serviceDispatchOut(&g_tune, TuneIpcCmd_GetStatus, tmp);
     if (R_SUCCEEDED(rc) && status) *status = tmp & 1;
@@ -42,6 +43,7 @@ Result tunePrev() {
 }
 
 Result tuneGetVolume(float *out) {
+    if (!out) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetVolume, *out);
 }
 
@@ -50,6 +52,7 @@ Result tuneSetVolume(float volume) {
 }
 
 Result tuneGetTitleVolume(float *out) {
+    if (!out) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetTitleVolume, *out);
 }
 
@@ -58,6 +61,7 @@ Result tuneSetTitleVolume(float volume) {
 }
 
 Result tuneGetDefaultTitleVolume(float *out) {
+    if (!out) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetDefaultTitleVolume, *out);
 }
 
@@ -66,6 +70,7 @@ Result tuneSetDefaultTitleVolume(float volume) {
 }
 
 Result tuneGetRepeatMode(TuneRepeatMode *state) {
+    if (!state) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     u8 out = 0;
     Result rc = serviceDispatchOut(&g_tune, TuneIpcCmd_GetRepeatMode, out);
     if (R_SUCCEEDED(rc) && state)
@@ -79,6 +84,7 @@ Result tuneSetRepeatMode(TuneRepeatMode state) {
 }
 
 Result tuneGetShuffleMode(TuneShuffleMode *state) {
+    if (!state) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     u8 out = 0;
     Result rc = serviceDispatchOut(&g_tune, TuneIpcCmd_GetShuffleMode, out);
     if (R_SUCCEEDED(rc) && state)
@@ -91,16 +97,19 @@ Result tuneSetShuffleMode(TuneShuffleMode state) {
 }
 
 Result tuneGetPlaylistSize(u32 *count) {
+    if (!count) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetPlaylistSize, *count);
 }
 
 Result tuneGetPlaylistItem(u32 index, char *out_path, size_t out_path_length) {
+    if (!out_path || !out_path_length) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchIn(&g_tune, TuneIpcCmd_GetPlaylistItem, index,
                               .buffer_attrs = {SfBufferAttr_Out | SfBufferAttr_HipcMapAlias},
                               .buffers = {{out_path, out_path_length}}, );
 }
 
 Result tuneGetCurrentQueueItem(char *out_path, size_t out_path_length, TuneCurrentStats *out) {
+    if (!out_path || !out_path_length || !out) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetCurrentQueueItem, *out,
                               .buffer_attrs = {SfBufferAttr_Out | SfBufferAttr_HipcMapAlias},
                               .buffers = {{out_path, out_path_length}}, );
@@ -127,6 +136,7 @@ Result tuneSeek(u32 position) {
 }
 
 Result tuneEnqueue(const char *path, TuneEnqueueType type) {
+    if (!path) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     u8 tmp = type;
     size_t path_length = strlen(path);
     return serviceDispatchIn(&g_tune, TuneIpcCmd_Enqueue, tmp,
@@ -143,5 +153,6 @@ Result tuneQuit() {
 }
 
 Result tuneGetApiVersion(u32 *version) {
+    if (!version) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     return serviceDispatchOut(&g_tune, TuneIpcCmd_GetApiVersion, *version);
 }

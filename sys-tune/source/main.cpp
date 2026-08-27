@@ -1,7 +1,6 @@
 #include "impl/music_player.hpp"
 #include "sdmc/sdmc.hpp"
 #include "pm/pm.hpp"
-#include "impl/aud_wrapper.h"
 #include "impl/source.hpp"
 #include "tune_service.hpp"
 #include "tune_result.hpp"
@@ -32,9 +31,7 @@ void __appInit() {
         setsysExit();
     }
 
-    R_ABORT_UNLESS(gpioInitialize());
     R_ABORT_UNLESS(fsInitialize());
-    R_ABORT_UNLESS(audWrapperInitialize());
     R_ABORT_UNLESS(pm::Initialize());
     R_ABORT_UNLESS(sdmc::Open());
 }
@@ -42,9 +39,7 @@ void __appInit() {
 void __appExit(void) {
     sdmc::Close();
     pm::Exit();
-    audWrapperExit();
     fsExit();
-    gpioExit();
     smExit();
 }
 
@@ -59,41 +54,89 @@ namespace {
 }
 
 int main(int, char *[]) {
-    R_ABORT_UNLESS(tune::impl::Initialize());
+    /* Claim the IPC name first. A duplicate launch can race boot; in that case
+       exit quietly before opening audio or creating worker threads. */
+    if (R_FAILED(tune::InitializeServer()))
+        return 0;
 
-    /* Get GPIO session for the headphone jack pad. */
-    GpioPadSession headphone_detect_session;
-    R_ABORT_UNLESS(gpioOpenSession(&headphone_detect_session, GpioPadName(0x15)));
+    if (R_FAILED(tune::impl::Initialize())) {
+        tune::ExitServer();
+        return 0;
+    }
 
-    ::Thread gpioThread;
-    ::Thread pmdmtThread;
-    ::Thread tuneThread;
-    R_ABORT_UNLESS(threadCreate(&gpioThread, tune::impl::GpioThreadFunc, &headphone_detect_session, gpioThreadBuffer, sizeof(gpioThreadBuffer), 0x20, -2));
-    R_ABORT_UNLESS(threadCreate(&pmdmtThread, tune::impl::PmdmntThreadFunc, nullptr, pmdmntThreadBuffer, sizeof(pmdmntThreadBuffer), 0x20, -2));
-    R_ABORT_UNLESS(threadCreate(&tuneThread, tune::impl::TuneThreadFunc, nullptr, tuneThreadBuffer, sizeof(tuneThreadBuffer), 0x20, -2));
+    ::Thread gpioThread{};
+    ::Thread pmdmtThread{};
+    ::Thread tuneThread{};
 
-    R_ABORT_UNLESS(threadStart(&gpioThread));
-    R_ABORT_UNLESS(threadStart(&pmdmtThread));
-    R_ABORT_UNLESS(threadStart(&tuneThread));
+    Result rc = threadCreate(&pmdmtThread, tune::impl::PmdmntThreadFunc, nullptr,
+        pmdmntThreadBuffer, sizeof(pmdmntThreadBuffer), 0x20, -2);
+    if (R_FAILED(rc)) {
+        tune::ExitServer();
+        return 0;
+    }
+    rc = threadCreate(&tuneThread, tune::impl::TuneThreadFunc, nullptr,
+        tuneThreadBuffer, sizeof(tuneThreadBuffer), 0x20, -2);
+    if (R_FAILED(rc)) {
+        threadClose(&pmdmtThread);
+        tune::ExitServer();
+        return 0;
+    }
+    rc = threadStart(&pmdmtThread);
+    if (R_FAILED(rc)) {
+        threadClose(&pmdmtThread);
+        threadClose(&tuneThread);
+        tune::ExitServer();
+        return 0;
+    }
+    rc = threadStart(&tuneThread);
+    if (R_FAILED(rc)) {
+        tune::impl::Exit();
+        svcCancelSynchronization(pmdmtThread.handle);
+        threadWaitForExit(&pmdmtThread);
+        threadClose(&pmdmtThread);
+        threadClose(&tuneThread);
+        tune::ExitServer();
+        return 0;
+    }
 
-    /* Create services */
-    R_ABORT_UNLESS(tune::InitializeServer());
+    /* Headphone detection is optional. Some hardware/firmware combinations do
+       not expose this GPIO pad; music playback must still remain available. */
+    GpioPadSession headphone_detect_session{};
+    const bool gpio_initialized = R_SUCCEEDED(gpioInitialize());
+    const bool gpio_session_open = gpio_initialized &&
+        R_SUCCEEDED(gpioOpenSession(&headphone_detect_session, GpioPadName(0x15)));
+
+    bool gpio_thread_created = false;
+    bool gpio_thread_started = false;
+    if (gpio_session_open && R_SUCCEEDED(threadCreate(&gpioThread, tune::impl::GpioThreadFunc,
+            &headphone_detect_session, gpioThreadBuffer, sizeof(gpioThreadBuffer), 0x20, -2))) {
+        gpio_thread_created = true;
+        gpio_thread_started = R_SUCCEEDED(threadStart(&gpioThread));
+    }
     tune::LoopProcess();
-    R_ABORT_UNLESS(tune::ExitServer());
+    tune::ExitServer();
 
     tune::impl::Exit();
-    svcCancelSynchronization(gpioThread.handle);
+    if (gpio_thread_started)
+        svcCancelSynchronization(gpioThread.handle);
+    svcCancelSynchronization(pmdmtThread.handle);
+    svcCancelSynchronization(tuneThread.handle);
 
-    R_ABORT_UNLESS(threadWaitForExit(&gpioThread));
-    R_ABORT_UNLESS(threadWaitForExit(&pmdmtThread));
-    R_ABORT_UNLESS(threadWaitForExit(&tuneThread));
+    if (gpio_thread_started)
+        threadWaitForExit(&gpioThread);
+    threadWaitForExit(&pmdmtThread);
+    threadWaitForExit(&tuneThread);
 
-    R_ABORT_UNLESS(threadClose(&gpioThread));
-    R_ABORT_UNLESS(threadClose(&pmdmtThread));
-    R_ABORT_UNLESS(threadClose(&tuneThread));
+    if (gpio_thread_created)
+        threadClose(&gpioThread);
+    threadClose(&pmdmtThread);
+    threadClose(&tuneThread);
 
     /* Close gpio session. */
-    gpioPadClose(&headphone_detect_session);
+    if (gpio_session_open)
+        gpioPadClose(&headphone_detect_session);
+    if (gpio_initialized)
+        gpioExit();
 
     return 0;
 }

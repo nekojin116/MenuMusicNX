@@ -8,6 +8,5 @@
 .vscode/settings.json
 build
 dist
+.tools/
 *.zip
-!releases/*.zip
-.agent-build-log.txt

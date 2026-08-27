@@ -41,14 +41,14 @@ APP_TITLE	:=	MenuMusicNX
 
 TARGET		:=	sys-tune-overlay
 BUILD		:=	build
-SOURCES		:=	source ../ipc ../common/minIni ../common/sdmc ../common/config ../common/pm ../common/aud
+SOURCES		:=	source ../ipc ../common/minIni ../common/sdmc ../common/config
 DATA		:=	data
 INCLUDES	:=	lib/include ../ipc ../common
 APP_VERSION	:=	$(VERSION)
 NO_ICON		:=  1
 
 ifeq ($(RELEASE),)
-	APP_VERSION	:=	$(APP_VERSION)-$(shell git describe --dirty --always)
+	APP_VERSION	:=	$(APP_VERSION)-$(shell git describe --dirty --always 2>/dev/null || echo dev)
 endif
 
 WANT_FLAGS	:=

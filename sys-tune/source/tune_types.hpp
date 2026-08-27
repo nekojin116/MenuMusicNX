@@ -9,6 +9,7 @@ namespace tune {
     enum class PlayerStatus : u8 {
         Playing,
         FetchNext,
+        Stopped,
     };
 
     enum class ShuffleMode : u8 {

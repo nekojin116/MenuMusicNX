@@ -11,7 +11,11 @@ static bool ini_open(const char* filename, struct NxFile* nxfile, u32 mode) {
         return false;
     }
 
-    strcpy(filename_buf, filename);
+    if (filename == NULL || strlen(filename) >= sizeof(filename_buf)) {
+        fsFsClose(&nxfile->system);
+        return false;
+    }
+    memcpy(filename_buf, filename, strlen(filename) + 1);
 
     if (R_FAILED(rc = fsFsOpenFile(&nxfile->system, filename_buf, mode, &nxfile->file))) {
         if (mode & FsOpenMode_Write) {
@@ -106,8 +110,12 @@ bool ini_rename(const char* src, const char* dst) {
         return false;
     }
 
-    strcpy(src_buf, src);
-    strcpy(dst_buf, dst);
+    if (src == NULL || dst == NULL || strlen(src) >= sizeof(src_buf) || strlen(dst) >= sizeof(dst_buf)) {
+        fsFsClose(&fs);
+        return false;
+    }
+    memcpy(src_buf, src, strlen(src) + 1);
+    memcpy(dst_buf, dst, strlen(dst) + 1);
     rc = fsFsRenameFile(&fs, src_buf, dst_buf);
     fsFsClose(&fs);
     return R_SUCCEEDED(rc);
@@ -122,7 +130,11 @@ bool ini_remove(const char* filename) {
         return false;
     }
 
-    strcpy(filename_buf, filename);
+    if (filename == NULL || strlen(filename) >= sizeof(filename_buf)) {
+        fsFsClose(&fs);
+        return false;
+    }
+    memcpy(filename_buf, filename, strlen(filename) + 1);
     rc = fsFsDeleteFile(&fs, filename_buf);
     fsFsClose(&fs);
     return R_SUCCEEDED(rc);

@@ -1,5 +1,7 @@
 # MenuMusicNX
 
+![MenuMusicNX logo](assets/MenuMusicNX%20Logo.png)
+
 HOME Menu background music for the Nintendo Switch.
 
 <p align="center">
@@ -44,7 +46,7 @@ MenuMusicNX is a **fork of [sys-tune](https://github.com/HookedBehemoth/sys-tune
 
 ## Installation
 
-1. Download [`releases/MenuMusicNX-1.0.1.zip`](releases/MenuMusicNX-1.0.1.zip), or build your own (see [Building](#building)).
+1. Download a packaged release, or build your own (see [Building](#building)).
 2. Extract to the **root of your SD card**.
 3. Reboot the console (or restart title `4200000000000000` from the Toolbox).
 
@@ -71,21 +73,33 @@ Config is stored at `sdmc:/config/sys-tune/config.ini` (path kept for compatibil
 | HOME pressed over a game | Music resumes (same position) |
 | Return to game | Music pauses |
 | Close game on HOME | Music continues |
-| Console power on | Music fades in (~1 s) |
-| Console power off | Stops immediately (no fade out) |
 
 Open the overlay with **L + D-Pad Down + Right Stick click** (default Tesla binding), then select **MenuMusicNX**.
 
 ## Building
 
 ```bash
-git clone --recursive https://github.com/Fimochi/MenuMusicNX.git
+git clone https://github.com/Fimochi/MenuMusicNX.git
 cd MenuMusicNX
 make
 make dist   # optional: produces dist/ zip ready for SD card
 ```
 
-Requires the `overlay/lib` submodule ([libtesla](https://github.com/WerWolv/libtesla)).
+The required [libtesla](https://github.com/WerWolv/libtesla) headers are vendored in `overlay/lib` so builds do not depend on a moving submodule revision.
+
+## Stability hardening
+
+Version 1.1 focuses on sysmodule and overlay reliability:
+
+- validates and terminates all paths received over IPC;
+- fixes failed MP3/WAV decoder initialization and cleanup;
+- synchronizes decoder lifetime, seeking, queue changes, and shutdown;
+- prevents empty-playlist underflow and invalid queue moves;
+- bounds-checks browser paths and short filenames;
+- handles missing `pdm:qry` and headphone GPIO services without aborting;
+- uses bounded audio waits so the sysmodule can always shut down;
+- removes legacy foreground-game volume manipulation;
+- avoids invalid progress calculations for empty or corrupt tracks.
 
 ## Project structure
 

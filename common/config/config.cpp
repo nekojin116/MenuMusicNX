@@ -19,7 +19,7 @@ void create_config_dir() {
 
 auto get_tid_str(u64 tid) -> const char* {
     static char buf[21]{};
-    std::sprintf(buf, "%016lX", tid);
+    std::snprintf(buf, sizeof(buf), "%016lX", tid);
     return buf;
 }
 

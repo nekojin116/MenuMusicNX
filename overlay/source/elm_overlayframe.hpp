@@ -22,7 +22,7 @@ public:
         renderer->fillScreen(a(tsl::style::color::ColorFrameBackground));
         renderer->drawRect(tsl::cfg::FramebufferWidth - 1, 0, 1, tsl::cfg::FramebufferHeight, a(0xF222));
 
-        renderer->drawString("ovl-tune \u266B", false, 20, 50, 30, a(tsl::style::color::ColorText));
+        renderer->drawString("MenuMusicNX \u266B", false, 20, 50, 30, a(tsl::style::color::ColorText));
         renderer->drawString(VERSION, false, 20, 70, 15, a(tsl::style::color::ColorDescription));
 
         renderer->drawRect(15, tsl::cfg::FramebufferHeight - 73, tsl::cfg::FramebufferWidth - 30, 1, a(tsl::style::color::ColorText));
@@ -75,13 +75,14 @@ public:
     }
 
     bool onTouch(tsl::elm::TouchEvent event, s32 currX, s32 currY, s32 prevX, s32 prevY, s32 initialX, s32 initialY) override {
+        if (m_contentElement == nullptr)
+            return false;
+
         // Discard touches outside bounds
         if (!m_contentElement->inBounds(currX, currY))
             return false;
 
-        if (m_contentElement != nullptr)
-            return m_contentElement->onTouch(event, currX, currY, prevX, prevY, initialX, initialY);
-        else return false;
+        return m_contentElement->onTouch(event, currX, currY, prevX, prevY, initialX, initialY);
     }
 
     /**

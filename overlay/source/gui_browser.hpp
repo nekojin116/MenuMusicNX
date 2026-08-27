@@ -6,11 +6,12 @@
 
 class BrowserGui final : public tsl::Gui {
   private:
-    SysTuneOverlayFrame* m_frame;
-    tsl::elm::List *m_list;
-    FsFileSystem m_fs;
-    bool has_music;
-    char cwd[FS_MAX_PATH];
+    SysTuneOverlayFrame* m_frame{nullptr};
+    tsl::elm::List *m_list{nullptr};
+    FsFileSystem m_fs{};
+    bool m_fs_open{false};
+    bool has_music{false};
+    char cwd[FS_MAX_PATH]{};
 
   public:
     BrowserGui();

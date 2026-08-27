@@ -332,7 +332,7 @@ class Mp3File final : public Source {
     u64 m_total_frame_count;
 
   public:
-    Mp3File(FsFile &&file) : Source(std::move(file)) {
+    Mp3File(FsFile &&file) : Source(std::move(file)), initialized(false), m_total_frame_count(0) {
         if (drmp3_init(&this->m_mp3, ReadCallback, Mp3SeekCallback, Mp3TellCallback, nullptr, this, mp3_alloc_ptr)) {
             this->m_total_frame_count = drmp3_get_pcm_frame_count(&this->m_mp3);
             this->initialized         = true;
@@ -383,7 +383,7 @@ class WavFile final : public Source {
     s32 m_bytes_per_pcm;
 
   public:
-    WavFile(FsFile &&file) : Source(std::move(file)) {
+    WavFile(FsFile &&file) : Source(std::move(file)), initialized(false), m_bytes_per_pcm(0) {
         if (drwav_init(&this->m_wav, ReadCallback, WavSeekCallback, WavTellCallback, this, wav_alloc_ptr)) {
             this->m_bytes_per_pcm = drwav_get_bytes_per_pcm_frame(&this->m_wav);
             this->initialized     = true;
@@ -407,6 +407,9 @@ class WavFile final : public Source {
     std::pair<u32, u32> Tell() override {
         std::scoped_lock lk(this->m_mutex);
 
+        if (this->m_bytes_per_pcm <= 0) {
+            return {0, 0};
+        }
         u64 byte_position = this->m_wav.dataChunkDataSize - this->m_wav.bytesRemaining;
         return {byte_position / this->m_bytes_per_pcm, this->m_wav.totalPCMFrameCount};
     }

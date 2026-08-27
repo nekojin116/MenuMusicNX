@@ -10,13 +10,13 @@ namespace {
     char total_buffer[0x20] = "";
 
     void NullLastDot(char *str) {
-        char *end = str + strlen(str) - 1;
-        while (str != end) {
-            if (*end == '.') {
-                *end = '\0';
-                return;
-            }
-            end--;
+        if (str == nullptr || *str == '\0') {
+            return;
+        }
+        char *dot = std::strrchr(str, '.');
+        char *separator = std::strrchr(str, '/');
+        if (dot != nullptr && (separator == nullptr || dot > separator)) {
+            *dot = '\0';
         }
     }
 
@@ -134,7 +134,7 @@ bool StatusBar::onClick(u64 keys) {
     return handled;
 }
 
-#define TOUCHED(button) (currX > (Get##button##X() - 30) && currX < (Get##button##X() + 30) && prevY > (Get##button##Y() - 30) && prevY < (Get##button##Y() + 30))
+#define TOUCHED(button) (currX > (Get##button##X() - 30) && currX < (Get##button##X() + 30) && currY > (Get##button##Y() - 30) && currY < (Get##button##Y() + 30))
 
 bool StatusBar::onTouch(tsl::elm::TouchEvent event, s32 currX, s32 currY, s32 prevX, s32 prevY, s32 initialX, s32 initialY) {
     if (event == tsl::elm::TouchEvent::Touch)
@@ -178,21 +178,17 @@ void StatusBar::update() {
 
     if (R_SUCCEEDED(tuneGetCurrentQueueItem(path_buffer, FS_MAX_PATH, &this->m_stats))) {
         /* Only show file name. Ignore path to file and extension. */
-        size_t length = std::strlen(path_buffer);
         NullLastDot(path_buffer);
-        for (size_t i = length; i >= 0; i--) {
-            if (path_buffer[i] == '/') {
-                if (this->m_current_track != path_buffer + i + 1) {
-                    this->m_current_track = path_buffer + i + 1;
-                    this->m_text_width = 0;
-                    this->m_scroll_offset = 0;
-                    this->m_counter = 0;
-                }
-                break;
-            }
+        const char *separator = std::strrchr(path_buffer, '/');
+        const char *track_name = separator != nullptr ? separator + 1 : path_buffer;
+        if (this->m_current_track != track_name) {
+            this->m_current_track = track_name;
+            this->m_text_width = 0;
+            this->m_scroll_offset = 0;
+            this->m_counter = 0;
         }
     } else {
-        this->m_current_track = this->m_playing ? "Paused" : "Waiting for HOME Menu...";
+        this->m_current_track = this->m_playing ? "Waiting for music..." : "Paused outside HOME Menu";
         this->m_stats = {};
         /* Reset scrolling text */
         this->m_text_width = 0;
@@ -200,9 +196,17 @@ void StatusBar::update() {
         this->m_counter = 0;
     }
     /* Progress text and bar */
-    u32 current = this->m_stats.current_frame / this->m_stats.sample_rate;
-    u32 total = this->m_stats.total_frames / this->m_stats.sample_rate;
-    this->m_percentage = std::clamp(float(this->m_stats.current_frame) / float(this->m_stats.total_frames), 0.0f, 1.0f);
+    u32 current = 0;
+    u32 total = 0;
+    this->m_percentage = 0.f;
+    if (this->m_stats.sample_rate > 0) {
+        current = this->m_stats.current_frame / this->m_stats.sample_rate;
+        total = this->m_stats.total_frames / this->m_stats.sample_rate;
+    }
+    if (this->m_stats.total_frames > 0) {
+        this->m_percentage = std::clamp(
+            float(this->m_stats.current_frame) / float(this->m_stats.total_frames), 0.0f, 1.0f);
+    }
 
     std::snprintf(current_buffer, sizeof(current_buffer), "%d:%02d", current / 60, current % 60);
     std::snprintf(total_buffer, sizeof(total_buffer), "%d:%02d", total / 60, total % 60);

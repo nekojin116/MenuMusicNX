@@ -73,13 +73,27 @@ namespace tune {
                     GET_SINGLE(RepeatMode, impl::GetRepeatMode);
 
                 case TuneIpcCmd_SetRepeatMode:
-                    SET_SINGLE(RepeatMode, impl::SetRepeatMode);
+                    if (r->data.size >= sizeof(RepeatMode)) {
+                        const auto mode = *(RepeatMode *)r->data.ptr;
+                        if (mode <= RepeatMode::All) {
+                            impl::SetRepeatMode(mode);
+                            return 0;
+                        }
+                    }
+                    break;
 
                 case TuneIpcCmd_GetShuffleMode:
                     GET_SINGLE(ShuffleMode, impl::GetShuffleMode);
 
                 case TuneIpcCmd_SetShuffleMode:
-                    SET_SINGLE(ShuffleMode, impl::SetShuffleMode);
+                    if (r->data.size >= sizeof(ShuffleMode)) {
+                        const auto mode = *(ShuffleMode *)r->data.ptr;
+                        if (mode <= ShuffleMode::On) {
+                            impl::SetShuffleMode(mode);
+                            return 0;
+                        }
+                    }
+                    break;
 
                 case TuneIpcCmd_GetPlaylistSize:
                     GET_SINGLE(u32, impl::GetPlaylistSize);

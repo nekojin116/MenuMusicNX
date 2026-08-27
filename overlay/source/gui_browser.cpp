@@ -14,7 +14,13 @@ namespace {
     };
 
     ALWAYS_INLINE bool EndsWith(const char *name, const char *ext) {
-        return strcasecmp(name + std::strlen(name) - std::strlen(ext), ext) == 0;
+        if (name == nullptr || ext == nullptr) {
+            return false;
+        }
+        const size_t name_length = std::strlen(name);
+        const size_t ext_length = std::strlen(ext);
+        return name_length >= ext_length &&
+            strcasecmp(name + name_length - ext_length, ext) == 0;
     }
 
     constexpr const std::array SupportedTypes = {
@@ -44,13 +50,14 @@ namespace {
 }
 
 
-BrowserGui::BrowserGui()
-    : m_fs(), has_music(), cwd("/") {
+BrowserGui::BrowserGui() {
+    std::strcpy(this->cwd, "/");
     this->m_list = new tsl::elm::List();
 
     /* Open sd card filesystem. */
     Result rc = fsOpenSdCardFileSystem(&this->m_fs);
     if (R_SUCCEEDED(rc)) {
+        this->m_fs_open = true;
         /* Check if base path /music/ exists. */
         FsDir dir;
         std::strcpy(this->cwd, base_path);
@@ -67,7 +74,8 @@ BrowserGui::BrowserGui()
 }
 
 BrowserGui::~BrowserGui() {
-    fsFsClose(&this->m_fs);
+    if (this->m_fs_open)
+        fsFsClose(&this->m_fs);
 }
 
 tsl::elm::Element *BrowserGui::createUI() {
@@ -119,8 +127,8 @@ void BrowserGui::scanCwd() {
 
     /* Iternate over directory. */
     s64 count = 0;
-    const u64 max = 2048; // max items to be added to the array.
-    std::vector<FsDirectoryEntry> entries(64);
+    const u64 max = 512; // Keep the overlay within Tesla's constrained memory budget.
+    std::vector<FsDirectoryEntry> entries(32);
 
     // avoid vector allocs / resize in the loop.
     folders.reserve(max);
@@ -138,8 +146,13 @@ void BrowserGui::scanCwd() {
                 auto item = new tsl::elm::ListItem(entry.name);
                 item->setClickListener([this, item](u64 down) -> bool {
                     if (down & HidNpadButton_A) {
-                        std::strncat(this->cwd, item->getText().c_str(), sizeof(this->cwd) - 1);
-                        std::strncat(this->cwd, "/", sizeof(this->cwd) - 1);
+                        const size_t used = std::strlen(this->cwd);
+                        const int written = std::snprintf(this->cwd + used, sizeof(this->cwd) - used,
+                            "%s/", item->getText().c_str());
+                        if (written < 0 || static_cast<size_t>(written) >= sizeof(this->cwd) - used) {
+                            m_frame->setToast("Path is too long", item->getText().c_str());
+                            return true;
+                        }
                         this->scanCwd();
                         return true;
                     } else if (down & HidNpadButton_ZR) {
@@ -177,7 +190,7 @@ void BrowserGui::scanCwd() {
         }
 
         if (folders.size() + files.size() >= max) {
-            m_frame->setToast("Stopped scanning folder", "maximum of " + std::to_string(max) + " hit");
+            this->m_list->addItem(new tsl::elm::CategoryHeader("Showing first 512 entries"));
             break;
         }
     }
@@ -216,12 +229,11 @@ void BrowserGui::upCwd() {
     if (length <= 1)
         return;
 
-    for (size_t i = length - 2; i >= 0; i--) {
-        if (this->cwd[i] == '/') {
-            this->cwd[i + 1] = '\0';
-            this->scanCwd();
-            return;
-        }
+    this->cwd[length - 1] = '\0';
+    char *separator = std::strrchr(this->cwd, '/');
+    if (separator != nullptr) {
+        separator[1] = '\0';
+        this->scanCwd();
     }
 }
 

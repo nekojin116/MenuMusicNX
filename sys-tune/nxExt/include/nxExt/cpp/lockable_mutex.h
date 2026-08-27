@@ -34,7 +34,7 @@ public:
     {
         return mutexTryLock(&this->m);
     }
-    
+
     void Unlock()
     {
         mutexUnlock(&this->m);

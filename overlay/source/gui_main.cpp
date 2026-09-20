@@ -27,6 +27,21 @@ tsl::elm::Element *MainGui::createUI() {
     info->setValue("Auto");
     list->addItem(info);
 
+    /* Applets (Settings, Album, hbmenu, ...) pause playback like games do. */
+    auto applet_pause = new tsl::elm::ListItem("Pause in applets");
+    applet_pause->setValue(config::get_pause_on_applet() ? "On" : "Off");
+    applet_pause->setClickListener([applet_pause](u64 keys) {
+        if (keys & HidNpadButton_A) {
+            const bool value = !config::get_pause_on_applet();
+            config::set_pause_on_applet(value);
+            applet_pause->setValue(value ? "On" : "Off");
+            applet_pause->invalidate();
+            return true;
+        }
+        return false;
+    });
+    list->addItem(applet_pause);
+
     /* Playlist. */
     auto queue_button = new tsl::elm::ListItem("Playlist");
     queue_button->setClickListener([](u64 keys) {

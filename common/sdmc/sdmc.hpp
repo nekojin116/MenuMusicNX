@@ -15,4 +15,8 @@ namespace sdmc {
 
     Result CreateFolder(const char* path);
 
+    /// Creates `path` when missing and appends `data` to the end of the file.
+    /// The file is flushed on close, so the data is visible to other readers.
+    Result AppendFile(const char* path, const void* data, size_t size);
+
 }

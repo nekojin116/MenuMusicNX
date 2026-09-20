@@ -188,7 +188,7 @@ void StatusBar::update() {
             this->m_counter = 0;
         }
     } else {
-        this->m_current_track = this->m_playing ? "Waiting for music..." : "Paused outside HOME Menu";
+        this->m_current_track = this->m_playing ? "Waiting for music..." : "Paused (game or applet open)";
         this->m_stats = {};
         /* Reset scrolling text */
         this->m_text_width = 0;

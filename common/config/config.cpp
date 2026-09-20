@@ -96,6 +96,24 @@ void set_default_title_volume(float value) {
     ini_putf("config", "global_volume", value, CONFIG_PATH);
 }
 
+auto get_pause_on_applet() -> bool {
+    return ini_getbool("config", "pause_on_applet", true, CONFIG_PATH);
+}
+
+void set_pause_on_applet(bool value) {
+    create_config_dir();
+    ini_putl("config", "pause_on_applet", value, CONFIG_PATH);
+}
+
+auto get_focus_log() -> bool {
+    return ini_getbool("config", "focus_log", false, CONFIG_PATH);
+}
+
+void set_focus_log(bool value) {
+    create_config_dir();
+    ini_putl("config", "focus_log", value, CONFIG_PATH);
+}
+
 auto get_load_path(char* out, int max_len) -> int {
     return ini_gets("config", "load_path", "", out, max_len, CONFIG_PATH);
 }

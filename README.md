@@ -35,6 +35,7 @@ MenuMusicNX is a **fork of [sys-tune](https://github.com/HookedBehemoth/sys-tune
 | Manual play/pause in overlay | Removed |
 | Title-based config (`[title]` in ini) | Ignored for playback |
 | `pmdmntGetApplicationProcessId` only | `pdm:qry` focus events + qlaunch detection |
+| Games paused music, applets kept it playing | **Applets pause too** (Settings, Album, hbmenu, ...) with a `pause_on_applet` toggle |
 | No fade transition | **Smooth fade-in/out when entering or leaving games** |
 
 ## Requirements
@@ -62,17 +63,45 @@ switch/.overlays/sys-tune-overlay.ovl            ← Tesla overlay
 
 Config is stored at `sdmc:/config/sys-tune/config.ini` (path kept for compatibility with upstream sys-tune).
 
+Keys read from that file:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `pause_on_applet` | `1` | Pause playback while a system/library applet is in the foreground |
+| `focus_log` | `0` | Append pdm focus events and playback decisions to `sdmc:/config/sys-tune/focus.log` |
+| `volume` | `1.0` | Playback volume (mirrored by the overlay slider) |
+| `shuffle` / `repeat` | `0` / `1` | Shuffle and repeat mode, mirrored by the status bar buttons |
+| `load_path` | *(empty)* | Startup file or folder, set with **ZR** in the browser or playlist |
+
+The sysmodule re-reads these values whenever the focus event log changes, so a toggle flipped in the overlay applies the next time a game or applet takes the foreground.
+
 ## Usage
 
 | Situation | Behaviour |
 |---|---|
 | HOME Menu (no game) | Music plays |
 | Game running | Music pauses |
+| System applet open (Settings, Album, eShop, hbmenu, ...) | Music pauses |
+| Tesla overlay open (this menu, sys-clk, ...) | Music keeps playing |
 | HOME pressed over a game | Music resumes (same position) |
 | Return to game | Music pauses |
 | Close game on HOME | Music continues |
 
 Open the overlay with **L + D-Pad Down + Right Stick click** (default Tesla binding), then select **MenuMusicNX**.
+
+Applet pausing can be switched off with **Pause in applets** in the overlay (or `pause_on_applet=0` in the config file): music then keeps playing while Settings, the Album or applet-mode homebrew are open.
+
+## Focus detection
+
+Playback follows the `pdm:qry` focus event log, polled every 50 ms:
+
+- qlaunch (HOME Menu) has focus → music plays (fade-in);
+- the running application (game, or homebrew in application mode) has focus → music pauses (fade-out);
+- any other system/library applet has focus (Settings, Album, eShop, hbmenu, ...) → music pauses;
+- the overlay applet used by Tesla/nx-ovlloader is ignored, so opening this menu never stops the music;
+- if `pdm:qry` is unavailable the old rule applies: music plays while no application is running.
+
+Tracks keep their position while paused, so playback resumes exactly where it left off. Set `focus_log=1` in the config to dump every raw focus event and the resulting decision to `sdmc:/config/sys-tune/focus.log`.
 
 ## Building
 

@@ -34,6 +34,14 @@ void set_title_volume(u64 tid, float value);
 auto get_default_title_volume() -> float;
 void set_default_title_volume(float value);
 
+// pause playback while a system/library applet (Settings, Album, hbmenu, ...) is focused
+auto get_pause_on_applet() -> bool;
+void set_pause_on_applet(bool value);
+
+// append pdm focus events and playback decisions to /config/sys-tune/focus.log
+auto get_focus_log() -> bool;
+void set_focus_log(bool value);
+
 // returns the length of the string
 auto get_load_path(char* out, int max_len) -> int;
 void set_load_path(const char* path);

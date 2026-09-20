@@ -7,7 +7,7 @@ endif
 endif
 
 export GITHASH 		:= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-export VERSION 		:= 1.1.0
+export VERSION 		:= 1.2.0
 export API_VERSION 	:= 4
 export WANT_FLAC 	:= 1
 export WANT_MP3 	:= 1

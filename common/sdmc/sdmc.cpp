@@ -44,4 +44,27 @@ namespace sdmc {
         return fsFsCreateDirectory(&sdmc, path);
     }
 
+    Result AppendFile(const char* path, const void* data, size_t size) {
+        if (path == nullptr || data == nullptr || size == 0)
+            return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+
+        /* FsOpenMode_Append makes the kernel write at the end of the file, so
+           the offset passed to fsFileWrite is ignored. Same pattern as
+           common/minIni/minGlue.c. */
+        FsFile file;
+        Result rc = fsFsOpenFile(&sdmc, path, FsOpenMode_Write | FsOpenMode_Append, &file);
+        if (R_FAILED(rc)) {
+            rc = fsFsCreateFile(&sdmc, path, 0, 0);
+            if (R_FAILED(rc))
+                return rc;
+            rc = fsFsOpenFile(&sdmc, path, FsOpenMode_Write | FsOpenMode_Append, &file);
+            if (R_FAILED(rc))
+                return rc;
+        }
+
+        rc = fsFileWrite(&file, 0, data, size, FsWriteOption_None);
+        fsFileClose(&file);
+        return rc;
+    }
+
 }
